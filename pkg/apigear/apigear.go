@@ -1,10 +1,9 @@
 package apigear
 
 import (
+	"fmt"
 	"log"
 	"net/http"
-
-	"github.com/go-chi/chi/middleware"
 
 	"github.com/go-chi/chi"
 	"github.com/go-mach/machinery/pkg/machinery"
@@ -33,8 +32,8 @@ type (
 	// APIInfo is the structure returned by the starter func.
 	// These params will be used by the APIGear to start the http server.
 	APIInfo struct {
-		Router *chi.Mux
-		Addr   string
+		Router      *chi.Mux
+		Middlewares []func(http.Handler) http.Handler
 	}
 
 	// APICompositionFunc is the api root composition func in which specify API configuration.
@@ -69,14 +68,16 @@ func NewAPIGear(uname string, compose APICompositionFunc) *APIGear {
 func (apigear *APIGear) Start(machine *machinery.Machinery) {
 	apigear.router = chi.NewRouter()
 
-	apigear.router.Use(middleware.Recoverer)
-
+	// compose api calling provided composition func to get router and middlewares
 	api := apigear.compose(machine)
+
+	apigear.router.Use(api.Middlewares...)
 	apigear.router.Route(apigear.config.Endpoint.BaseRoutingPath, func(r chi.Router) {
 		r.Mount("/", api.Router)
 	})
 
-	log.Fatal(http.ListenAndServe(api.Addr, apigear.router))
+	addr := fmt.Sprintf(":%d", apigear.config.Endpoint.Port)
+	log.Fatal(http.ListenAndServe(addr, apigear.router))
 }
 
 // Configure get the configuration map and struct it into APIConf structure.
