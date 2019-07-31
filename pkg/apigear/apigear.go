@@ -43,6 +43,7 @@ type (
 	// APIGear is the gear structure derived from the Machinery BaseGear.
 	APIGear struct {
 		machinery.BaseGear
+		router  *chi.Mux
 		compose APICompositionFunc
 		config  APIConf
 	}
@@ -55,6 +56,7 @@ func NewAPIGear(uname string, compose APICompositionFunc) *APIGear {
 			Uname:  uname,
 			Logger: nil,
 		},
+		router:  chi.NewRouter(),
 		compose: compose,
 		config:  APIConf{},
 	}
@@ -63,13 +65,13 @@ func NewAPIGear(uname string, compose APICompositionFunc) *APIGear {
 // Start will start the APIGear runtime.
 // It creates the root api router, setup middelwares and mount the app routing.
 func (apigear *APIGear) Start(machine *machinery.Machinery) {
-	router := chi.NewRouter()
+	apigear.router = chi.NewRouter()
 	api := apigear.compose(machine)
-	router.Route(apigear.config.Endpoint.BaseRoutingPath, func(r chi.Router) {
+	apigear.router.Route(apigear.config.Endpoint.BaseRoutingPath, func(r chi.Router) {
 		r.Mount("/", api.Router)
 	})
 
-	log.Fatal(http.ListenAndServe(api.Addr, router))
+	log.Fatal(http.ListenAndServe(api.Addr, apigear.router))
 }
 
 // Configure get the configuration map and struct it into APIConf structure.
@@ -81,4 +83,9 @@ func (apigear *APIGear) Configure(config interface{}) {
 // Shutdown .
 func (apigear *APIGear) Shutdown() {
 	log.Printf("%s SHUT DOWN", apigear.Uname)
+}
+
+// Use setup middlewares.
+func (apigear *APIGear) Use(middlewares ...func(http.Handler) http.Handler) {
+
 }
