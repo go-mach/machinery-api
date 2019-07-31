@@ -4,6 +4,8 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/go-chi/chi/middleware"
+
 	"github.com/go-chi/chi"
 	"github.com/go-mach/machinery/pkg/machinery"
 	"github.com/mitchellh/mapstructure"
@@ -37,7 +39,7 @@ type (
 
 	// APICompositionFunc is the api root composition func in which specify API configuration.
 	// Here the developer can create its routes and manually dependency wire into
-	// controllers and services.
+	// controllers and services.2
 	APICompositionFunc func(*machinery.Machinery) APIInfo
 
 	// APIGear is the gear structure derived from the Machinery BaseGear.
@@ -66,6 +68,9 @@ func NewAPIGear(uname string, compose APICompositionFunc) *APIGear {
 // It creates the root api router, setup middelwares and mount the app routing.
 func (apigear *APIGear) Start(machine *machinery.Machinery) {
 	apigear.router = chi.NewRouter()
+
+	apigear.router.Use(middleware.Recoverer)
+
 	api := apigear.compose(machine)
 	apigear.router.Route(apigear.config.Endpoint.BaseRoutingPath, func(r chi.Router) {
 		r.Mount("/", api.Router)
